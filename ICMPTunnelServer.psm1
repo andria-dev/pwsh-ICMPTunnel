@@ -128,6 +128,7 @@ public static class LIBC
     )
 
     #Constructing the Echo Reply packet
+    if ($null -eq $Command) { $Command = '' }
     $EchoReply = @(0, 0, 0, 0) + $ICMPHeader[4..7] + $MessageType + [Text.Encoding]::UTF8.GetBytes($Command);
 
     # Calculating the checksum of the Echo Reply (ones' complement of the ones' complement sum of every 16 bits)
