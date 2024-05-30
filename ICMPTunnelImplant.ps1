@@ -17,7 +17,7 @@ enum ServerMessageType {
 }
 
 # Configure me!
-$ServerIPAddress = '172.29.16.1';
+$ServerIPAddress = '192.168.86.95';
 $BufferSize = 65535;
 $PingTimeout = 10 * 1000;
 
