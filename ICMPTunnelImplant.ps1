@@ -14,6 +14,7 @@ enum ServerMessageType {
 	NeedsPrompt = 34
 	IssuingCommand = 9
 	Stop = 2
+	Received = 7
 }
 
 # Configure me!

