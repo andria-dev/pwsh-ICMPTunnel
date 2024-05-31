@@ -237,6 +237,10 @@ public static class LIBC
 						Write-Host "Bye!";
 						Return;
 					}
+					Default {
+						Write-Host "Failed to shut down implant.";
+						$State = [ServerState]::WaitingForPrompt;
+					}
 				}
 			}
 		}

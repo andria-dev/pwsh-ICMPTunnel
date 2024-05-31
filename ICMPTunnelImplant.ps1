@@ -72,6 +72,7 @@ While ($True) {
 						Break;
 					}
 					Stop {
+						Send-ICMPMessage -MessageType Stopping;
 						Return;
 					}
 				}
