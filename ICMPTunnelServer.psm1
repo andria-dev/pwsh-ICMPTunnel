@@ -6,7 +6,6 @@ Enum ImplantMessageType {
 	CommandResultPart = 5
 	CommandResultEnd = 7
 	Stopping = 9
-	Sync = 11
 }
 
 Enum ServerMessageType {
@@ -14,7 +13,6 @@ Enum ServerMessageType {
 	IssuingCommand = 2
 	Stop = 4
 	Received = 6
-	Sync = 8
 }
 
 Enum ServerState {
@@ -169,8 +167,6 @@ public static class LIBC
 			WaitingForPrompt {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
 				If ($null -eq $ICMPHeader) { Continue; }
-
-				# TODO: add check for sync message.
 
 				Switch ([ImplantMessageType]$MessageType) {
 					Prompt {
