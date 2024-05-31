@@ -19,7 +19,7 @@ enum ServerMessageType {
 # Configure me!
 $ServerIPAddress = '192.168.86.95';
 $BufferSize = 65535;
-$PingTimeout = 10 * 1000;
+$PingTimeout = 1000;
 
 $Ping = New-Object System.Net.NetworkInformation.Ping;
 $PingOptions = New-Object System.Net.NetworkInformation.PingOptions;
