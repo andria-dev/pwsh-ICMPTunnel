@@ -1,19 +1,19 @@
 enum ImplantMessageType {
-	Prompt
-	NeedsInstruction
-	CommandResultPart
-	CommandResultEnd
+	Prompt = 0
+	NeedsInstruction = 1
+	CommandResultPart = 2
+	CommandResultEnd = 3
 }
 
 enum ImplantState {
-	WaitingForInstruction
-	SendingCommandResult
+	WaitingForInstruction = 0
+	SendingCommandResult = 1
 }
 
 enum ServerMessageType {
-	NeedsPrompt
-	IssuingCommand
-	Stop
+	NeedsPrompt = 0
+	IssuingCommand = 1
+	Stop = 2
 }
 
 # Configure me!

