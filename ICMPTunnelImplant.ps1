@@ -11,8 +11,8 @@ enum ImplantState {
 }
 
 enum ServerMessageType {
-	NeedsPrompt = 0
-	IssuingCommand = 1
+	NeedsPrompt = 34
+	IssuingCommand = 9
 	Stop = 2
 }
 
